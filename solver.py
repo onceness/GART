@@ -1199,7 +1199,7 @@ class TGFitter:
             mu[0], fr[0], sc[0], op[0], sph[0], H, W, K[0], False, sph_o, bg
         )
         pred = render_pkg["rgb"].permute(1, 2, 0).detach().cpu().numpy()
-        imageio.imsave(osp.join(self.log_dir, "fps_eval_sample.png"), pred)
+        # imageio.imsave(osp.join(self.log_dir, "fps_eval_sample.png"), pred)
 
         logging.info("Start FPS test...")
         start_t = time.time()

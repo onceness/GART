@@ -14,7 +14,7 @@ from lib_gart.model_utils import transform_mu_frame
 
 from utils.misc import *
 from utils.viz import viz_render
-
+from model_utils import save_gauspl_ply
 
 @torch.no_grad()
 def viz_spinning(
@@ -35,6 +35,12 @@ def viz_spinning(
     mu, fr, s, o, sph, additional_ret = model(
         pose, trans, {"t": time_index}, active_sph_order=active_sph_order
     )
+    
+    file_name_with_extension = save_path.split('/')[-1]
+    file_name = file_name_with_extension[:-4]
+    path = f"test9-{file_name}.ply"
+    save_gauspl_ply(path, mu, fr, s, o, sph)
+    
     if model_mask is not None:
         assert len(model_mask) == mu.shape[1]
         mu = mu[:, model_mask.bool()]
@@ -247,8 +253,9 @@ def viz_human_all(
     if data_provider is not None:
         to_viz["first-frame"] = pose_list[0][None]
 
-    for name, pose in to_viz.items():
+    for name, pose in tqdm(to_viz.items()):
         print(f"Viz novel {name}...")
+        print("Viz spinning path:", f"{viz_dir}/{name}.gif")
         # if export_mesh_flag:
         #     from lib_marchingcubes.gaumesh_utils import MeshExtractor
         #     # also extract a mesh
@@ -284,72 +291,72 @@ def viz_human_all(
         )
 
     # viz novel pose dynamic spinning
-    print("Viz novel seq...")
-    novel_pose_names = [
-        f[:-4] for f in os.listdir(novel_pose_dir) if f.endswith(".npy")
-    ]
-    seq_viz_todo = {}
-    for name in novel_pose_names:
-        novel_pose_fn = osp.join(novel_pose_dir, f"{name}.npy")
-        novel_poses = np.load(novel_pose_fn, allow_pickle=True)
-        novel_poses = novel_poses[::novel_skip]
-        N_frames = len(novel_poses)
-        novel_poses = torch.from_numpy(novel_poses).float().to(solver.device)
-        novel_poses = novel_poses.reshape(N_frames, 24, 3)
+    # print("Viz novel seq...")
+    # novel_pose_names = [
+    #     f[:-4] for f in os.listdir(novel_pose_dir) if f.endswith(".npy")
+    # ]
+    # seq_viz_todo = {}
+    # for name in novel_pose_names:
+    #     novel_pose_fn = osp.join(novel_pose_dir, f"{name}.npy")
+    #     novel_poses = np.load(novel_pose_fn, allow_pickle=True)
+    #     novel_poses = novel_poses[::novel_skip]
+    #     N_frames = len(novel_poses)
+    #     novel_poses = torch.from_numpy(novel_poses).float().to(solver.device)
+    #     novel_poses = novel_poses.reshape(N_frames, 24, 3)
 
-        seq_viz_todo[name] = (novel_poses, N_frames)
-    if data_provider is not None:
-        seq_viz_todo["training"] = [pose_list, len(pose_list)]
+    #     seq_viz_todo[name] = (novel_poses, N_frames)
+    # if data_provider is not None:
+    #     seq_viz_todo["training"] = [pose_list, len(pose_list)]
 
-    for name, (novel_poses, N_frames) in seq_viz_todo.items():
-        base_R = solver.viz_base_R.detach().cpu().numpy()
-        viz_frames = []
-        K = K_list[0]
-        for vid in range(N_frames):
-            pose = novel_poses[vid][None]
-            # pose = novel_poses[0][None] # debug
-            rotation = euler2mat(2 * np.pi * vid / N_frames, 0.0, 0.0, "syxz")
-            rotation = torch.from_numpy(rotation @ base_R).float().to(solver.device)
-            pose[:, 0] = matrix_to_axis_angle(rotation[None])[0]
-            trans = global_trans_list[0][None]
-            mu, fr, s, o, sph, _ = model(
-                pose,
-                trans,
-                # not pass in {}, so t is auto none
-                additional_dict={},
-                active_sph_order=active_sph_order,
-            )
-            if model_mask is not None:
-                assert len(model_mask) == mu.shape[1]
-                mu = mu[:, model_mask.bool()]
-                fr = fr[:, model_mask.bool()]
-                s = s[:, model_mask.bool()]
-                o = o[:, model_mask.bool()]
-                sph = sph[:, model_mask.bool()]
-            render_pkg = render_cam_pcl(
-                mu[0],
-                fr[0],
-                s[0],
-                o[0],
-                sph[0],
-                H,
-                W,
-                K,
-                False,
-                active_sph_order,
-                bg_color=getattr(solver, "DEFAULT_BG", [1.0, 1.0, 1.0]),
-                # bg_color=[1.0, 1.0, 1.0],  # ! use white bg for viz
-            )
-            viz_frame = (
-                torch.clamp(render_pkg["rgb"], 0.0, 1.0)
-                .permute(1, 2, 0)
-                .detach()
-                .cpu()
-                .numpy()
-            )
-            viz_frame = (viz_frame * 255).astype(np.uint8)
-            viz_frames.append(viz_frame)
-        imageio.mimsave(f"{viz_dir}/novel_pose_{name}.gif", viz_frames)
+    # for name, (novel_poses, N_frames) in seq_viz_todo.items():
+    #     base_R = solver.viz_base_R.detach().cpu().numpy()
+    #     viz_frames = []
+    #     K = K_list[0]
+    #     for vid in range(N_frames):
+    #         pose = novel_poses[vid][None]
+    #         # pose = novel_poses[0][None] # debug
+    #         rotation = euler2mat(2 * np.pi * vid / N_frames, 0.0, 0.0, "syxz")
+    #         rotation = torch.from_numpy(rotation @ base_R).float().to(solver.device)
+    #         pose[:, 0] = matrix_to_axis_angle(rotation[None])[0]
+    #         trans = global_trans_list[0][None]
+    #         mu, fr, s, o, sph, _ = model(
+    #             pose,
+    #             trans,
+    #             # not pass in {}, so t is auto none
+    #             additional_dict={},
+    #             active_sph_order=active_sph_order,
+    #         )
+    #         if model_mask is not None:
+    #             assert len(model_mask) == mu.shape[1]
+    #             mu = mu[:, model_mask.bool()]
+    #             fr = fr[:, model_mask.bool()]
+    #             s = s[:, model_mask.bool()]
+    #             o = o[:, model_mask.bool()]
+    #             sph = sph[:, model_mask.bool()]
+    #         render_pkg = render_cam_pcl(
+    #             mu[0],
+    #             fr[0],
+    #             s[0],
+    #             o[0],
+    #             sph[0],
+    #             H,
+    #             W,
+    #             K,
+    #             False,
+    #             active_sph_order,
+    #             bg_color=getattr(solver, "DEFAULT_BG", [1.0, 1.0, 1.0]),
+    #             # bg_color=[1.0, 1.0, 1.0],  # ! use white bg for viz
+    #         )
+    #         viz_frame = (
+    #             torch.clamp(render_pkg["rgb"], 0.0, 1.0)
+    #             .permute(1, 2, 0)
+    #             .detach()
+    #             .cpu()
+    #             .numpy()
+    #         )
+    #         viz_frame = (viz_frame * 255).astype(np.uint8)
+    #         viz_frames.append(viz_frame)
+    #     imageio.mimsave(f"{viz_dir}/novel_pose_{name}.gif", viz_frames)
     return
 
 

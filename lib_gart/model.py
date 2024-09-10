@@ -18,7 +18,7 @@ from pytorch3d.transforms import (
     quaternion_to_matrix,
     matrix_to_quaternion,
 )
-from model_utils import sph_order2nfeat
+from model_utils import sph_order2nfeat, save_gauspl_ply
 from pytorch3d.ops import knn_points
 
 

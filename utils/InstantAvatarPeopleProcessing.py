@@ -1,3 +1,6 @@
+'''
+python utils/InstantAvatarPeopleProcessing.py --root ~/data --subject test2
+'''
 # Copied from 
 
 import os
@@ -28,7 +31,7 @@ if __name__ == "__main__":
     assert os.path.exists(dirpath), f"Cannot open {dirpath}"
     dirpath = Path(dirpath)
 
-    outdir = Path(f"./data/people_snapshot/{args.subject}/")
+    outdir = Path(f"./data/custom/{args.subject}/")
     os.makedirs(outdir, exist_ok=True)
 
     # load camera
